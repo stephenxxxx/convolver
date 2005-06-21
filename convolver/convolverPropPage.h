@@ -1,25 +1,8 @@
-// Convolver: DSP plug-in for Windows Media Player that convolves an impulse respose
-// filter it with the input stream.
-//
-// Copyright (C) 2005  John Pavel
-//
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-//
 /////////////////////////////////////////////////////////////////////////////
 //
 // CConvolverPropPage.h : Declaration of CConvolverPropPage
+//
+// Copyright (c) Microsoft Corporation. All rights reserved.
 //
 /////////////////////////////////////////////////////////////////////////////
 
@@ -58,24 +41,21 @@ END_COM_MAP()
 
 BEGIN_MSG_MAP(CConvolverPropPage)
 	COMMAND_HANDLER(IDC_WETMIX, EN_CHANGE, OnEnChangeWetmix)
-	COMMAND_HANDLER(IDC_GETFILTER, BN_CLICKED, OnBnClickedGetfilter)
-	COMMAND_HANDLER(IDC_ATTENUATION, EN_CHANGE, OnEnChangeAttenuation)
 	CHAIN_MSG_MAP(IPropertyPageImpl<CConvolverPropPage>)
+	COMMAND_HANDLER(IDC_DELAYTIME, EN_CHANGE, OnChangeDelay)
 	MESSAGE_HANDLER(WM_INITDIALOG, OnInitDialog)
 END_MSG_MAP()
 
     STDMETHOD(SetObjects)(ULONG nObjects, IUnknown** ppUnk);
     STDMETHOD(Apply)(void);
 
+	LRESULT (OnChangeDelay)(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled);
 	LRESULT (OnInitDialog)(UINT uMsg, WPARAM wParam, LPARAM lParam, BOOL& bHandled);
 
 private:
     CComPtr<IConvolver> m_spConvolver;  // pointer to plug-in interface
-
 public:
 	LRESULT OnEnChangeWetmix(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnBnClickedGetfilter(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
-	LRESULT OnEnChangeAttenuation(WORD /*wNotifyCode*/, WORD /*wID*/, HWND /*hWndCtl*/, BOOL& /*bHandled*/);
 };
 
 #endif // __CCONVOLVERPROPPAGE_H_

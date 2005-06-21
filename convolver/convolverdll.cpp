@@ -1,23 +1,6 @@
-// Convolver: DSP plug-in for Windows Media Player that convolves an impulse respose
-// filter it with the input stream.
-//
-// Copyright (C) 2005  John Pavel
-//
-// This program is free software; you can redistribute it and/or
-// modify it under the terms of the GNU General Public License
-// as published by the Free Software Foundation; either version 2
-// of the License, or (at your option) any later version.
-//
-// This program is distributed in the hope that it will be useful,
-// but WITHOUT ANY WARRANTY; without even the implied warranty of
-// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-// GNU General Public License for more details.
-//
-// You should have received a copy of the GNU General Public License
-// along with this program; if not, write to the Free Software
-// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-//
 // convolverdll.cpp : Implementation of DLL Exports.
+//
+// Copyright (c) Microsoft Corporation. All rights reserved.
 
 #include "stdafx.h"
 #include "resource.h"
@@ -26,7 +9,6 @@
 #include "convolver.h"
 #include "ConvolverPropPage.h"
 
-#define CRTDBG_MAP_ALLOC
 #include <crtdbg.h>     // Debug header
 #include <uuids.h>      // DirectX SDK media types and subtyes
 #include <dmoreg.h>     // DirectX SDK registration
@@ -100,11 +82,9 @@ STDAPI DllRegisterServer(void)
     bstrDescription.LoadString(IDS_DESCRIPTION);
 
     // Describe the type of data handled by the plug-in
-    DMO_PARTIAL_MEDIATYPE mt[2] = { 0, 0 };
-    mt[0].type = MEDIATYPE_Audio;
-    mt[0].subtype = MEDIASUBTYPE_PCM;
-    mt[1].type = MEDIATYPE_Audio;
-	mt[1].subtype = MEDIASUBTYPE_IEEE_FLOAT;
+    DMO_PARTIAL_MEDIATYPE mt = { 0 };
+    mt.type = MEDIATYPE_Audio;
+    mt.subtype = MEDIASUBTYPE_PCM;
 
     // Register the plug-in with WMP
     hr = spRegistrar->WMPRegisterPlayerPlugin(
@@ -113,8 +93,8 @@ STDAPI DllRegisterServer(void)
                     NULL,               // path to app that uninstalls the plug-in
                     1,                  // DirectShow priority for this plug-in
                     WMP_PLUGINTYPE_DSP, // Plug-in type
-                    CLSID_Convolver,	// Class ID of plug-in
-                    2,                  // No. media types supported by plug-in
+                    CLSID_Convolver,// Class ID of plug-in
+                    1,                  // No. media types supported by plug-in
                     &mt);               // Array of media types supported by plug-in
 
     if (FAILED(hr))
