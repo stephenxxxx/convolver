@@ -1,0 +1,299 @@
+// Convolver: DSP plug-in for Windows Media Player that convolves an impulse respose
+// filter it with the input stream.
+//
+// Copyright (C) 2005  John Pavel
+//
+// This program is free software; you can redistribute it and/or
+// modify it under the terms of the GNU General Public License
+// as published by the Free Software Foundation; either version 2
+// of the License, or (at your option) any later version.
+//
+// This program is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+// GNU General Public License for more details.
+//
+// You should have received a copy of the GNU General Public License
+// along with this program; if not, write to the Free Software
+// Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+
+
+#include "convolution\channelpaths.h"
+
+ChannelPaths::ChannelPaths(TCHAR szConfigFileName[MAX_PATH], const int& nPartitions) :
+nInputChannels(0),
+nOutputChannels(0),
+nPaths(0),
+nPartitions(nPartitions),
+nPartitionLength(0),
+nHalfPartitionLength(0),
+nFilterLength(0)
+#ifdef FFTW
+,nFFTWPartitionLength(2)
+#endif
+{
+	USES_CONVERSION;
+	std::ifstream  config(T2A(szConfigFileName));
+	if (config == NULL)
+	{
+		throw "Failed to open config file";
+	}
+
+
+	bool got_path_spec = false;
+
+	try
+	{
+		config.exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit | std::ios::badbit);
+
+		char szFilterFilename[MAX_PATH];
+		while(!config.eof())
+		{
+			config.getline(szFilterFilename,MAX_PATH);
+
+			got_path_spec = false;
+
+			std::vector<ChannelPath::ScaledChannel> inChannel;
+			while(true)
+			{
+				// Require at least one input channel
+				float scale;
+				config >> scale;
+
+				if(scale < 0)
+					throw "Negative input channel number. Invalid";
+
+				// The integer part designates the input channel
+				int channel = floor(scale);   
+
+				if(channel > nInputChannels - 1)
+					nInputChannels = channel + 1; // Got a bigger channel number
+
+				if (nInputChannels > MAX_CHANNEL)
+					throw "Invalid input Channel number";
+
+				// The fractional part is the scaling factor to be applied
+				scale -= channel;
+
+				// 0 implies no scaling to be applied (ie, scale = 1)
+				if(scale == 0)
+					scale = 1.0f;
+
+				inChannel.push_back(ChannelPath::ScaledChannel(channel, scale));
+
+				int nextchar = config.get();
+				if (nextchar == '\n' || nextchar == EOF)
+					break;
+			}
+
+			// Get the output channels for this filter
+			std::vector<ChannelPath::ScaledChannel> outChannel;
+			while(true)
+			{
+				float scale;
+				config >> scale;
+
+				if(scale < 0)
+					throw "Negative output channel number. Invalid";
+
+				// The integer part designates the output channel
+				int channel = floor(scale);
+
+				if(channel > nOutputChannels - 1)
+					nOutputChannels = channel + 1; // Got a bigger channel number
+
+				if (nOutputChannels > MAX_CHANNEL)
+					throw "Invalid output Channel number";
+
+				// The fractional part is the scaling factor to be applied
+				scale -= channel;
+				// 0 implies no scaling to be applied (ie, scale = 1)
+				if(scale == 0)
+					scale = 1.0f;
+
+				outChannel.push_back(ChannelPath::ScaledChannel(channel, scale));
+
+				int nextchar = config.get();
+				if (nextchar == '\n' || nextchar == EOF)
+					break;
+			}
+
+			Paths.push_back(ChannelPath(A2T(szFilterFilename), nPartitions, inChannel, outChannel));
+			++nPaths;
+
+			got_path_spec = true;
+		}
+	}
+	catch(const std::ios_base::failure& error)
+	{
+		if(config.eof())
+		{
+
+			if(!got_path_spec)
+			{
+				throw "Premature end of configuration file.  Missing final blank line?";
+			}
+
+			// Verify
+			if (nPaths > 0)
+			{
+				nPartitionLength = Paths[0].filter.nPartitionLength;			// in frames (a frame contains the interleaved samples for each channel)
+				nHalfPartitionLength = Paths[0].filter.nHalfPartitionLength;	// in frames
+				nFilterLength = Paths[0].filter.nFilterLength;					// nFilterLength = nPartitions * nPartitionLength
+#ifdef FFTW
+				nFFTWPartitionLength = 2 * (nPartitionLength / 2 + 1);			// Needs an extra element
+#endif
+			}
+			else
+			{
+				throw "Must specify at least one filter";
+			}
+
+			for(int i = 0; i < nPaths; ++i)
+			{
+				if(Paths[i].filter.nChannels != 1)
+				{
+					throw "Filters must have exactly one channel";
+				}
+
+				if(Paths[i].filter.nFilterLength != nFilterLength)
+				{
+					throw "Filters must all be of the same length";
+				}
+#ifdef LIBSNDFILE
+				if(Paths[0].filter.sf_FilterFormat.samplerate != Paths[i].filter.sf_FilterFormat.samplerate)
+#else
+				if(Paths[0].filter.wfewfexFilterFormat.nBytesPerSec != Paths[i].filter.wfexFilterFormat.nBytesPerSec)
+#endif
+				{
+					throw "Filters must all have the same samplerate";
+				}
+
+			}
+#if defined(DEBUG) | defined(_DEBUG)
+			Dump();
+#endif
+		}
+		else
+		{
+#if defined(DEBUG) | defined(_DEBUG)
+			cdebug << "I/O exception: " << error.what() << std::endl;
+#endif
+			throw;
+		}
+		// else fall through
+	}
+	catch(const std::exception& error)
+	{
+#if defined(DEBUG) | defined(_DEBUG)
+		cdebug << "Standard exception: " << error.what() << std::endl;
+#endif
+		throw;
+	}
+	catch (const char* & what)
+	{
+#if defined(DEBUG) | defined(_DEBUG)
+		cdebug << "Failed: " << what << std::endl;
+#endif
+		throw;
+	}
+	catch (const TCHAR* & what)
+	{
+#if defined(DEBUG) | defined(_DEBUG)
+		cdebug << "Failed: " << what << std::endl;
+#endif
+		throw;
+	}
+	catch (...)
+	{
+#if defined(DEBUG) | defined(_DEBUG)
+		cdebug << "Failed." << std::endl;
+#endif
+		throw;
+	}
+}
+
+#if defined(DEBUG) | defined(_DEBUG)
+void ChannelPaths::Dump()
+{
+	cdebug << "ChannelPaths: " << " nInputChannels:" << nInputChannels << " nOutputChannels:" << nOutputChannels <<
+		" nPartitions:" << nPartitions << " nPartitionLength:" << nPartitionLength <<
+		" nHalfPartitionLength:" << nHalfPartitionLength << " nFilterLength:" << nFilterLength << std::endl;
+	for(int i = 0; i < nPaths; ++i) 
+		Paths[i].Dump();
+}
+
+void ChannelPaths::ChannelPath::Dump()
+{
+	cdebug << "inChannel:";
+	for(int i=0; i<inChannel.size(); ++i)
+	{
+		cdebug << " "; inChannel[i].Dump();
+	}
+
+	cdebug << std::endl << "outChannel:";
+	for(int i=0; i<outChannel.size(); ++i)
+	{
+		cdebug << " "; outChannel[i].Dump();
+	}
+	cdebug << std::endl;
+}
+
+void ChannelPaths::ChannelPath::ScaledChannel::Dump()
+{
+	cdebug << nChannel << "/" << fScale;
+}
+
+#endif
+
+const std::string ChannelPaths::DisplayChannelPaths()
+{
+	std::ostringstream result;
+
+	if (nPaths == 0)
+	{
+		result << "No paths defined";
+	}
+	else
+	{
+		if (nPaths == 1)
+		{
+			result << "1 path (";
+		}
+		else
+		{
+			result << nPaths << " paths (";
+		}
+
+		if (nInputChannels == 1)
+		{
+			result << "mono to ";
+		}
+		else if (nInputChannels == 2)
+		{
+			result << "stereo to ";
+		}
+		else
+			result << nInputChannels << ") ";
+
+		if (nOutputChannels == 1)
+		{
+			result << "mono) ";
+		}
+		else if (nOutputChannels == 2)
+		{
+			result << "stereo) ";
+		}
+		else
+			result << nOutputChannels << ") ";
+
+		result
+#ifdef LIBSNDFILE
+			<< Paths[0].filter.sf_FilterFormat.samplerate/1000.0f << "kHz " 
+#else
+			<< Paths[0].filter.wfexFilterFormat.Format.nSamplesPerSec/1000.0f << "kHz " 
+#endif
+			<< Paths[0].filter.nFilterLength << " taps";
+	}
+	return result.str();
+}
