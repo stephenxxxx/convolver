@@ -23,8 +23,6 @@
 ChannelPaths::ChannelPaths(TCHAR szConfigFileName[MAX_PATH], const int& nPartitions) :
 nInputChannels(0),
 nOutputChannels(0),
-nSampleRate(0),
-dwChannelMask(0),
 nPaths(0),
 nPartitions(nPartitions),
 nPartitionLength(0),
@@ -48,10 +46,6 @@ nFilterLength(0)
 
 		config.exceptions(std::ios::badbit | std::ios::failbit | std::ios::eofbit | std::ios::badbit);
 
-		config >> nSampleRate;
-#if defined(DEBUG) | defined(_DEBUG)
-		cdebug << nSampleRate << " sample rate" << std::endl;
-#endif
 		config >> nInputChannels;
 #if defined(DEBUG) | defined(_DEBUG)
 		cdebug << nInputChannels << " input channels" << std::endl;
@@ -60,15 +54,6 @@ nFilterLength(0)
 #if defined(DEBUG) | defined(_DEBUG)
 		cdebug << nOutputChannels << " output channels" << std::endl;
 #endif
-		config.unsetf(std::ios_base::dec);
-		config.setf(std::ios_base::hex);
-		config >> dwChannelMask;
-		config.unsetf(std::ios_base::hex);
-		config.setf(std::ios_base::dec);
-#if defined(DEBUG) | defined(_DEBUG)
-		cdebug << std::hex << dwChannelMask << std::dec << " channel mask" << std::endl;
-#endif
-
 		config.get();  // consume newline
 
 		char szFilterFilename[MAX_PATH];
@@ -140,7 +125,7 @@ nFilterLength(0)
 					break;
 			}
 
-			Paths.push_back(ChannelPath(A2T(szFilterFilename), nPartitions, inChannel, outChannel, nSampleRate));
+			Paths.push_back(ChannelPath(A2T(szFilterFilename), nPartitions, inChannel, outChannel));
 			++nPaths;
 
 			got_path_spec = true;
@@ -162,7 +147,6 @@ nFilterLength(0)
 				nPartitionLength = Paths[0].filter.nPartitionLength;			// in frames (a frame contains the interleaved samples for each channel)
 				nHalfPartitionLength = Paths[0].filter.nHalfPartitionLength;	// in frames
 				nFilterLength = Paths[0].filter.nFilterLength;					// nFilterLength = nPartitions * nPartitionLength
-				nSampleRate = Paths[0].filter.nSampleRate;
 #ifdef FFTW
 				nFFTWPartitionLength = 2 * (nPartitionLength / 2 + 1);			// Needs an extra element
 #endif
@@ -183,9 +167,12 @@ nFilterLength(0)
 				{
 					throw configException("Filters must all be of the same length");
 				}
-
-				if(Paths[i].filter.nSampleRate != nSampleRate)
-				{	// TODO: This is not necessary, as it is caught in CWaveFile
+#ifdef LIBSNDFILE
+				if(Paths[0].filter.sf_FilterFormat.samplerate != Paths[i].filter.sf_FilterFormat.samplerate)
+#else
+				if(Paths[0].filter.wfewfexFilterFormat.nBytesPerSec != Paths[i].filter.wfexFilterFormat.nBytesPerSec)
+#endif
+				{
 					throw configException("Filters must all have the same sample rate");
 				}
 			}
@@ -272,25 +259,34 @@ const std::string ChannelPaths::DisplayChannelPaths()
 	{
 		if (nPaths == 1)
 		{
-			result << "1 Path (";
+			result << "1 path (";
 		}
 		else
 		{
-			result << nPaths << " Paths (";
+			result << nPaths << " paths (";
 		}
 
 		if (nInputChannels == 1)
 		{
-			result << "Mono to ";
+			result << "mono to ";
 		}
 		else if (nInputChannels == 2)
 		{
-			result << "Stereo to ";
+			result << "stereo to ";
 		}
 		else
-			result << nInputChannels << " channels to ";
+			result << nInputChannels << ") ";
 
-		result << channelDescription(WAVE_FORMAT_EXTENSIBLE, dwChannelMask, nOutputChannels) << ") ";
+		if (nOutputChannels == 1)
+		{
+			result << "mono) ";
+		}
+		else if (nOutputChannels == 2)
+		{
+			result << "stereo) ";
+		}
+		else
+			result << nOutputChannels << ") ";
 
 		result
 #ifdef LIBSNDFILE

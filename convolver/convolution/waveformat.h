@@ -18,8 +18,10 @@
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
 #pragma once
 
-//#include "convolution\config.h"
-
+#include "convolution\config.h"
+#include <mmreg.h>
+#include <ks.h>
+#include <ksmedia.h>
 
 #ifndef LIBSNDFILE
 #include "Common\dxstdafx.h"
@@ -36,7 +38,6 @@
 std::string waveFormatDescription(const SF_INFO& sf_info, const char* prefix);
 //#else
 std::string waveFormatDescription(const WAVEFORMATEXTENSIBLE* w, const DWORD samples, const char* prefix);
-const std::string channelDescription(const WORD wFormatTag, const DWORD& dwChannelMask, const WORD& nChannels);
 //#endif
 
 //// Used to distinguish the different encoding and decoding routines

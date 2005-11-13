@@ -28,8 +28,6 @@
 #ifndef __CCONVOLVER_H_
 #define __CCONVOLVER_H_
 
-#define IPROPERTYBAG
-
 #include "resource.h"
 #include <mediaobj.h>       // The IMediaObject header from the DirectX SDK.
 
@@ -41,6 +39,7 @@
 #include "Common\dxstdafx.h"
 
 #if defined(DEBUG) | defined(_DEBUG)
+#define _CRTDBG_MAP_ALLOC 
 #include "debugging\debugging.h"
 #include "debugging\debugStream.h"
 #endif
@@ -89,8 +88,7 @@ public:
 // CConvolver
 /////////////////////////////////////////////////////////////////////////////
 
-// TODO: Could also implement the IMediaObjectInPlace interface, as an optimization for cases where the input and output
-// streams have the same format
+// TODO: Could also implement the IMediaObjectInPlace interface, as an optimization
 // See: http://msdn.microsoft.com/library/default.asp?url=/library/en-us/directshow/htm/imediaobjectinplaceinterface.asp
 
 class ATL_NO_VTABLE CConvolver : 
@@ -162,14 +160,6 @@ public:
 		DWORD dwOutputStreamIndex,
 		DWORD dwTypeIndex,
 		DMO_MEDIA_TYPE *pmt
-		);
-
-	STDMETHOD( GetMediaType )( // Helper
-		DWORD dwInputStreamIndex,
-		DWORD dwTypeIndex,
-		DMO_MEDIA_TYPE *pmt,
-		WORD nChannels,
-		DWORD dwChannelMask
 		);
 
 	STDMETHOD( SetInputType )( 
@@ -261,7 +251,6 @@ public:
 	// IWMPPluginEnable methods
 	STDMETHOD( SetEnable )( BOOL fEnable );
 	STDMETHOD( GetEnable )( BOOL *pfEnable );
-	STDMETHOD( GetCaps )( DWORD* pdwFlags );
 
 	// ISpecifyPropertyPages methods
 	STDMETHOD( GetPages )(CAUUID *pPages);
@@ -311,11 +300,9 @@ private:
 	DWORD					m_nPartitions;		// Number of partitions to be used in convolution algorithm
 
 	Holder< CConvolution<float> >	m_Convolution;			// Processing class.  Handle manages resources
-	Sample<float>*					m_InputSampleConvertor;		// functionoid conversion between BYTE and 
-	Sample<float>*					m_OutputSampleConvertor;	// float
-	TCHAR							m_szFilterFileName[MAX_PATH];
-
-	CFormatSpecs<float>				m_FormatSpecs;
+	Holder< Sample<float> >			m_InputSampleConvertor;		// functionoid conversion between BYTE and 
+	Holder< Sample<float> >			m_OutputSampleConvertor;	// float
+	TCHAR					m_szFilterFileName[MAX_PATH];
 
 	BOOL                    m_bEnabled;         // TRUE if enabled
 };
