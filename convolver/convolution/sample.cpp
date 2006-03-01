@@ -16,34 +16,27 @@
 // You should have received a copy of the GNU General Public License
 // along with this program; if not, write to the Free Software
 // Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-//
-/////////////////////////////////////////////////////////////////////////////
 
-#pragma once
-#include "convolution\config.h"
+#include "convolution\sample.h"
 
-void SIMDFlushToZero(void);
-long int lrint (double flt);
-long int lrintf (float flt);
+// Ordering is by preference
+bool operator <(const SampleFormatId& x, const SampleFormatId& y)
+{
+	if (x.wValidBitsPerSample != y.wValidBitsPerSample)
+		return x.wValidBitsPerSample > y.wValidBitsPerSample;	// prefer more bits
 
-template <class IntType, class FloatType>
-IntType conv_float_to_int (FloatType x);
+	if (x.wBitsPerSample != y.wBitsPerSample)
+		return x.wBitsPerSample > y.wBitsPerSample;				// prefer more bits
 
-inline int conv_float_to_int (float x);
-inline int conv_float_to_int_mem (double x);
-int round_int (double x);
+	assert(x.SubType == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT || x.SubType == KSDATAFORMAT_SUBTYPE_PCM);
+	assert(y.SubType == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT || y.SubType == KSDATAFORMAT_SUBTYPE_PCM);
+	if(x.SubType != y.SubType)
+	{
+		return x.SubType == KSDATAFORMAT_SUBTYPE_IEEE_FLOAT;	// prefer float
+	}
 
-template <typename IntType, typename FloatType>
-IntType floor_int (FloatType x);
+	if (x.wFormatTag != y.wFormatTag)
+		return x.wFormatTag > y.wFormatTag;						// extensible (0xFFFE) preferred to float (3) or pcm (1)
 
-template
-int floor_int<int,float>(float);
-
-int ceil_int (double x);
-//int truncate_int (double x);
-
-void test_and_kill_denormal (float &val);
-void kill_denormal_by_quantization (float &val);
-bool is_denormalized ();
-void add_white_noise (float &val);
-void add_dc (float &val);
+	return false;												// (x == y)
+}
